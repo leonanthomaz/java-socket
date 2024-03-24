@@ -7,76 +7,102 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Classe que representa o servidor de chat.
+ */
 public class Server {
     public static final int PORT = 4000;
     private ServerSocket serverSocket;
-    private List<ClientHandler> clients = new ArrayList<>(); // Lista de manipuladores de clientes
+    private List<ClientHandler> clients = new ArrayList<>();
 
+    /**
+     * Inicia o servidor.
+     */
     public void start() {
         try {
-            System.out.println("Conectando ao servidor");
-            serverSocket = new ServerSocket(PORT); // Criação do socket do servidor
-            System.out.println("Servidor em espera: " + serverSocket);
+            serverSocket = new ServerSocket(PORT);
             while (true) {
-                Socket clientSocket = serverSocket.accept(); // Aceita conexões de clientes
-                System.out.println("Socket Connection: " + clientSocket);
+                Socket clientSocket = serverSocket.accept();
                 ClientHandler clientHandler = new ClientHandler(clientSocket, Thread.currentThread().getName());
-                clients.add(clientHandler); // Adiciona o manipulador de cliente à lista de clientes
-                clientHandler.start(); // Inicia a thread do manipulador de cliente
+                clients.add(clientHandler);
+                clientHandler.start();
             }
         } catch (IOException e) {
             throw new RuntimeException("Erro ao executar na porta " + PORT + ": " + e.getMessage());
         }
     }
 
+    /**
+     * Classe interna que manipula clientes conectados ao servidor.
+     */
     private class ClientHandler extends Thread {
         private Socket clientSocket;
         private BufferedReader in;
         private PrintWriter out;
-        private String clientName; // Adicionando o nome do cliente
+        private String clientName;
 
+        /**
+         * Construtor do manipulador de cliente.
+         *
+         * @param socket     Socket do cliente
+         * @param clientName Nome do cliente
+         */
         public ClientHandler(Socket socket, String clientName) {
-            this.clientSocket = socket; // Inicializa o socket do cliente
-            this.clientName = clientName; // Definindo o nome do cliente ao criar o manipulador de cliente
+            this.clientSocket = socket;
+            this.clientName = clientName;
         }
 
         @Override
         public void run() {
-            Thread.currentThread().setName(clientName); // Definindo o nome da thread como o nome do cliente
+            Thread.currentThread().setName(clientName);
             try {
-                in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream())); // Cria um leitor de entrada para o cliente
-                out = new PrintWriter(clientSocket.getOutputStream(), true); // Cria um escritor de saída para o cliente
+                in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                out = new PrintWriter(clientSocket.getOutputStream(), true);
                 String msg;
-                while ((msg = in.readLine()) != null) { // Lê mensagens do cliente
-                    System.out.println("Mensagem do cliente: " + Thread.currentThread().getName() + " >> " + clientSocket.getRemoteSocketAddress() + " -> " + msg);
-                    broadcast(msg); // Repassa a mensagem para todos os outros clientes
+                while ((msg = in.readLine()) != null) {
+                    broadcast(msg);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
                 try {
-                    clientSocket.close(); // Fecha o socket do cliente
+                    clientSocket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                clients.remove(this); // Remove este manipulador de cliente da lista de clientes
+                clients.remove(this);
             }
         }
 
+        /**
+         * Transmite uma mensagem para todos os clientes.
+         *
+         * @param message Mensagem a ser transmitida
+         */
         private synchronized void broadcast(String message) {
-            for (ClientHandler client : clients) { // Para cada cliente na lista de clientes
-                client.sendMessage(message); // Envia a mensagem
+            for (ClientHandler client : clients) {
+                client.sendMessage(message);
             }
         }
 
+        /**
+         * Envia uma mensagem para um cliente específico.
+         *
+         * @param message Mensagem a ser enviada
+         */
         private void sendMessage(String message) {
-            out.println(message); // Envia a mensagem para o cliente
+            out.println(message);
         }
     }
 
+    /**
+     * Método de inicialização do servidor.
+     *
+     * @param args Argumentos de linha de comando (não utilizado)
+     */
     public static void main(String[] args) {
         Server server = new Server();
         System.out.println("Inicializando o servidor");
-        server.start(); // Inicia o servidor
+        server.start();
     }
 }
